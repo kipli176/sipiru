@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Petugas Pinjam Ruangan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style></style>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .cg-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1)
+        }
+
+        .topnav-active {
+            border-bottom: 3px solid #FFD600;
+            font-weight: bold;
+            color: #FFD600
+        }
+
+        .btn {
+            padding: .6rem 1rem;
+            border-radius: .5rem;
+            font-weight: bold
+        }
+
+        .modal-anim {
+            animation: zoom .20s ease-out
+        }
+
+        @keyframes zoom {
+            from {
+                transform: scale(.8);
+                opacity: 0
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1
+            }
+        }
+
+        body {
+            background: #F4F4F4;
+            color: #1F2937;
+            font-size: 15px
+        }
+
+        .table-row {
+            transition: 0.12s
+        }
+
+        .table-row:hover {
+            background-color: #F9FAFB
+        }
+
+        .table-cell-muted {
+            color: #6B7280
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold
+        }
+
+        .status-aktif {
+            background: #22C55E;
+            color: white
+        }
+
+        .status-nonaktif {
+            background: #FACC15;
+            color: black
+        }
+
+        .stat-card {
+            padding: 22px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            gap: 16px
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            background: #FFF7D6;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px
+        }
+
+        .stat-title {
+            font-size: 13px;
+            color: #6B7280
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #E5E7EB;
+            padding: 10px;
+            border-radius: 12px;
+            transition: 0.2s
+        }
+
+        .activity-item:hover {
+            background-color: #F9FAFB
+        }
+
+        .avatar {
+            width: 34px;
+            height: 34px;
+            background: #FACC15;
+            border-radius: 50%;
+            font-weight: 700;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #000;
+            margin-right: 12px
+        }
+
+        .status-pending {
+            background: #FACC15;
+            color: #000
+        }
+
+        .status-approved {
+            background: #22C55E;
+            color: white
+        }
+
+        .status-rejected {
+            background: #EF4444;
+            color: white
+        }
+
+        .jadwal-4grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px
+        }
+
+        @media (max-width:1024px) {
+            .jadwal-4grid {
+                grid-template-columns: repeat(2, 1fr)
+            }
+        }
+
+        @media (max-width:600px) {
+            .jadwal-4grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .slot-col {
+            display: flex;
+            flex-direction: column
+        }
+
+        .slot-header {
+            background: #FEF3C7;
+            border: 1px solid #FDE68A;
+            padding: 8px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            color: #92400E;
+            margin-bottom: 12px
+        }
+
+        .slot-card {
+            display: flex;
+            background: white;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            transition: 0.15s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04)
+        }
+
+        .slot-card:hover {
+            transform: scale(1.02);
+            background: #F9FAFB
+        }
+
+        .slot-strip {
+            width: 6px
+        }
+
+        .slot-color-1 .slot-strip {
+            background: #F59E0B
+        }
+
+        .slot-color-2 .slot-strip {
+            background: #3B82F6
+        }
+
+        .slot-color-3 .slot-strip {
+            background: #10B981
+        }
+
+        .slot-color-4 .slot-strip {
+            background: #EF4444
+        }
+
+        .slot-content {
+            padding: 10px 14px
+        }
+
+        .slot-matkul {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 4px
+        }
+
+        .slot-info {
+            font-size: 13px;
+            color: #6B7280
+        }
+
+        .switch {
+            position: relative;
+            width: 42px;
+            height: 22px;
+            display: inline-block
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e5e7eb;
+            transition: .25s;
+            border-radius: 12px
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .25s;
+            border-radius: 50%
+        }
+
+        input:checked+.slider {
+            background-color: #22c55e
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px)
+        }
+
+        .fullscreen-modal {
+            position: fixed !important;
+            inset: 0 !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            background: white !important;
+            z-index: 999999 !important;
+            overflow: hidden !important
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <nav class="bg-black text-white px-8 py-4 flex gap-8 font-semibold items-center">
+    <span class="text-yellow-300 font-bold mr-6">
+        {% if fakultas_nama %}{{ fakultas_nama }}{% else %}Administrator{% endif %}
+    </span>
+<a id="nav-dashboard"
+            href="/ngadmin">Dashboard</a><a id="nav-booking" href="/ngadmin/booking">Peminjaman</a><a id="nav-ruangan"
+            href="/ngadmin/ruangan">Ruangan</a><a id="nav-jadwal" href="/ngadmin/jadwal">Jadwal Kuliah</a><a
+            href="/ngadmin/logout" class="ml-auto">Keluar</a></nav>
+    <main class="max-w-7xl mx-auto px-5 py-10">{% block content %}{% endblock %}</main>
+    <div id="modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-7 relative modal-anim"><button
+                onclick="closeModal()" class="absolute top-3 right-4 text-xl font-bold">&times;</button>
+            <div id="modal-container"></div>
+        </div>
+    </div>{% block modals %}{% endblock %}<script src="/static/ngadmin.js"></script>{% block scripts %}{% endblock %}
+</body>
+
+</html>

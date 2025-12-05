@@ -1,0 +1,354 @@
+{% extends "unsoed/base.html" %}
+{% block content %}
+<div class="space-y-10">
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">Ruangan</h1>
+        <p class="text-xs text-gray-500 mt-1">Kelola ruangan berdasarkan fakultas.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+        <button class="btn bg-black text-white shadow" onclick="openModal('modal-add-ruangan')">➕ Tambah Ruangan</button>
+        <button class="btn bg-[#FFD600] text-black shadow" onclick="openModal('modal-import-ruangan')">Import Data</button>
+    </div>
+</div>
+<div class="cg-card">
+    <button onclick="togglePanduan()" class="text-blue-600 font-semibold text-sm flex items-center gap-1">
+        <span>Panduan Penggunaan</span>
+        <span id="arrow-panduan">▾</span>
+    </button>
+    <div id="panduan-box" class="mt-3 hidden text-sm text-gray-700 space-y-2 leading-relaxed">
+        <p>• Halaman ini digunakan untuk <b>mengelola daftar ruangan</b> pada fakultas Anda.</p>
+        <p>• Gunakan tombol <b>+ Tambah Ruangan</b> untuk menambahkan data baru.</p>
+        <p>• Gunakan tombol <b>Import Data</b> untuk mengunggah data ruangan secara massal.</p>
+        <p>• Gunakan fitur <b>filter</b> untuk mencari ruangan dengan cepat.</p>
+    </div>
+</div>
+<div class="cg-card grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+    <div class="md:col-span-2">
+        <label class="font-semibold">Cari</label>
+        <input id="cari-ruangan" class="w-full border p-3 rounded-lg mt-1" placeholder="Cari kode atau nama..." onkeyup="filterRuangan()">
+    </div>
+    <div>
+        <label class="font-semibold">Lantai</label>
+        <select id="filter-lantai" class="w-full border p-3 rounded-lg mt-1" onchange="filterRuangan()">
+            <option value="">Semua</option>
+            {% for x in range(1,10) %}<option value="{{x}}">Lantai {{x}}</option>{% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="font-semibold">Status</label>
+        <select id="filter-status" class="w-full border p-3 rounded-lg mt-1" onchange="filterRuangan()">
+            <option value="">Semua</option>
+            <option value="aktif">Aktif</option>
+            <option value="nonaktif">Nonaktif</option>
+        </select>
+    </div>
+</div>
+<div class="cg-card overflow-x-auto">
+    <table id="tabel-ruangan" class="w-full text-sm">
+        <thead class="bg-gray-100 border-b font-semibold">
+            <tr>
+                <th class="px-4 py-3">Kode</th>
+                <th class="px-4 py-3">Nama Ruangan</th>
+                <th class="px-4 py-3">Gedung</th>
+                <th class="px-4 py-3">Lantai</th>
+                <th class="px-4 py-3">Kapasitas</th>
+                <th class="px-4 py-3">Fasilitas</th>
+                <th class="px-4 py-3">Status</th>
+                <th class="px-4 py-3">Catatan</th>
+                <th class="px-4 py-3 text-right sticky right-0 bg-gray-100">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in data %}
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-3">{{ r.kode_ruang }}</td>
+                <td class="px-4 py-3">{{ r.nama_ruang }}</td>
+                <td class="px-4 py-3">{{ r.gedung or "-" }}</td>
+                <td class="px-4 py-3">{{ r.lantai or "-" }}</td>
+                <td class="px-4 py-3">{{ r.kapasitas or "-" }}</td>
+                <td class="px-4 py-3">{{ r.fasilitas or "-" }}</td>
+                <td class="px-4 py-3 text-center">
+                    <label class="switch">
+                        <input type="checkbox" {% if r.aktif %} checked {% endif %} onchange="toggleRuanganStatus('{{ r.id }}', this)">
+                        <span class="slider"></span>
+                    </label>
+                </td>
+                <td class="px-4 py-3">{{ r.catatan or "-" }}</td>
+                <td class="px-4 py-3 text-right sticky right-0 bg-white space-x-4">
+                    <button class="text-blue-600 font-semibold" onclick="openEditRuangan('{{ r.id }}')">Edit</button>
+                    <a href="/ngadmin/ruangan/delete/{{ r.id }}" class="text-red-600 font-semibold" onclick="return confirm('Hapus ruangan ini?')">Hapus</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="flex justify-between items-center text-sm">
+    <p class="text-gray-600">Menampilkan {{ start }}–{{ end }} dari {{ total }}</p>
+    <div class="flex gap-2">
+        {% if page > 1 %}<a href="/ngadmin/ruangan?page={{ page-1 }}" class="px-4 py-2 bg-white border rounded-lg hover:bg-gray-100">‹ Prev</a>{% endif %}
+        {% if end < total %}<a href="/ngadmin/ruangan?page={{ page+1 }}" class="px-4 py-2 bg-white border rounded-lg hover:bg-gray-100">Next ›</a>{% endif %}
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div id="modal-add-ruangan" class="modal-block hidden max-w-2xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Tambah Ruangan</h2>
+    <p class="text-gray-600 text-sm mb-4">Isi data ruangan dengan lengkap dan pastikan <span class="font-semibold">kode ruang unik</span>.</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                    <div class="p-3 mb-2 rounded text-sm border {% if category == 'success' %}bg-green-100 text-green-800 border-green-300{% elif category == 'error' %}bg-red-100 text-red-800 border-red-300{% else %}bg-gray-100 text-gray-800 border-gray-300{% endif %}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+    <form id="form-add-ruangan" action="/ngadmin/ruangan/add" method="POST" class="space-y-4">
+        <input type="hidden" name="fakultas_id" value="{{ session.fakultas_id }}">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kode Ruang <span class="text-red-600">*</span></label>
+                <input name="kode_ruang" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Nama Ruangan <span class="text-red-600">*</span></label>
+                <input name="nama_ruang" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Gedung</label>
+                <input name="gedung" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Lantai</label>
+                <input type="number" name="lantai" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kapasitas</label>
+                <input type="number" name="kapasitas" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Fasilitas</label>
+            <textarea name="fasilitas" class="w-full border p-3 rounded-lg mt-1" rows="2"></textarea>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Catatan</label>
+            <textarea name="catatan" class="w-full border p-3 rounded-lg mt-1" rows="2"></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeModal('modal-add-ruangan')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-add-ruangan" class="bg-black text-white px-4 py-2 rounded flex items-center gap-2">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<div id="modal-edit-ruangan" class="modal-block hidden max-w-2xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Edit Ruangan</h2>
+    <p class="text-gray-600 text-sm mb-4">Perbarui informasi ruangan berikut. Ruangan yang nonaktif tidak dapat dipilih saat menyusun jadwal.</p>
+    <form id="form-edit-ruangan" method="POST" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kode Ruang <span class="text-red-600">*</span></label>
+                <input name="kode_ruang" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Nama Ruangan <span class="text-red-600">*</span></label>
+                <input name="nama_ruang" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+            </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Gedung</label>
+                <input name="gedung" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Lantai</label>
+                <input type="number" name="lantai" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kapasitas</label>
+                <input type="number" name="kapasitas" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Fasilitas</label>
+            <textarea name="fasilitas" class="w-full border p-3 rounded-lg mt-1" rows="2"></textarea>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Status Ruangan</label>
+            <select name="aktif" class="w-full border p-3 rounded-lg mt-1 bg-gray-50">
+                <option value="1">Aktif</option>
+                <option value="0">Nonaktif</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Catatan</label>
+            <textarea name="catatan" class="w-full border p-3 rounded-lg mt-1" rows="2"></textarea>
+        </div>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeModal('modal-edit-ruangan')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-edit-ruangan" class="bg-black text-white px-4 py-2 rounded flex items-center gap-2">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>
+
+<div id="modal-import-ruangan" class="modal-block hidden max-w-3xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Import Data Ruangan</h2>
+    <p class="text-sm text-gray-700 mb-4 leading-relaxed">Unggah berkas <span class="font-semibold">CSV atau Excel (.xlsx)</span> yang berisi daftar ruangan.<br><span class="text-red-600 font-semibold">Semua ruangan fakultas akan diganti (replace total)</span> oleh data dari berkas ini.<br><br><span class="font-semibold text-blue-800">Disarankan melakukan Export terlebih dahulu</span> agar format sesuai sistem & menghindari data hilang.</p>
+    <div class="mb-4">
+        <a href="/ngadmin/ruangan/export" class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded">Export Ruangan Saat Ini</a>
+    </div>
+    <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="font-semibold text-blue-900 mb-1 text-sm">Format kolom wajib:</p>
+        <code class="block bg-white px-3 py-2 mb-3 rounded border border-blue-100 text-xs">kode_ruang, nama_ruang, gedung, lantai, kapasitas, fasilitas, catatan</code>
+        <p class="font-semibold text-blue-900 mb-2 text-sm">Contoh Tabel:</p>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs border border-blue-200 bg-white">
+                <thead>
+                    <tr class="bg-blue-100 text-blue-900">
+                        <th class="border px-2 py-1 text-left">kode_ruang</th>
+                        <th class="border px-2 py-1 text-left">nama_ruang</th>
+                        <th class="border px-2 py-1 text-left">gedung</th>
+                        <th class="border px-2 py-1 text-center">lantai</th>
+                        <th class="border px-2 py-1 text-center">kapasitas</th>
+                        <th class="border px-2 py-1 text-left">fasilitas</th>
+                        <th class="border px-2 py-1 text-left">catatan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="border px-2 py-1">R101</td>
+                        <td class="border px-2 py-1">Ruang Kuliah 1</td>
+                        <td class="border px-2 py-1">Gedung A</td>
+                        <td class="border px-2 py-1 text-center">1</td>
+                        <td class="border px-2 py-1 text-center">30</td>
+                        <td class="border px-2 py-1">AC;LCD</td>
+                        <td class="border px-2 py-1">Ruang utama</td>
+                    </tr>
+                    <tr>
+                        <td class="border px-2 py-1">R201</td>
+                        <td class="border px-2 py-1">Lab Komputer</td>
+                        <td class="border px-2 py-1">Gedung B</td>
+                        <td class="border px-2 py-1 text-center">2</td>
+                        <td class="border px-2 py-1 text-center">25</td>
+                        <td class="border px-2 py-1">PC lengkap</td>
+                        <td class="border px-2 py-1">Lab Praktikum</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="mb-4">
+                {% for category, message in messages %}
+                    <div class="p-3 mb-2 rounded flex items-center space-x-2 {% if category == 'success' %}bg-green-100 text-green-800 border border-green-300{% elif category == 'error' %}bg-red-100 text-red-800 border border-red-300{% else %}bg-gray-100 text-gray-800 border border-gray-300{% endif %}">
+                        <span>{% if category == 'success' %}✔{% elif category == 'error' %}✖{% else %}ℹ{% endif %}</span>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form id="form-import-ruangan" action="/ngadmin/ruangan/import" method="POST" enctype="multipart/form-data" class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700">Pilih Berkas CSV/Excel</label>
+        <input type="file" name="file" accept=".csv, .xlsx" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50" required>
+        <div class="flex justify-end gap-2 mt-2">
+            <button type="button" onclick="closeModal('modal-import-ruangan')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-upload-ruangan" type="submit" class="bg-black text-white px-4 py-2 rounded flex items-center justify-center gap-2">
+                <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5M12 5v14"/></svg>
+                <span>Import</span>
+            </button>
+        </div>
+    </form>
+    <p class="text-xs text-gray-500 mt-4">Pastikan format file mengikuti contoh tabel untuk menghindari error saat import.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function attachLoading(formId, btnId, label) {
+    const form = document.getElementById(formId);
+    const btn  = document.getElementById(btnId);
+    if (!form || !btn) return;
+    form.addEventListener("submit", function () {
+        btn.disabled = true;
+        btn.classList.add("opacity-70", "cursor-not-allowed");
+        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8.001 8.001 0 00-7.938 7z"></path></svg><span>${label}</span>`;
+    });
+}
+document.addEventListener("DOMContentLoaded", function () {
+    attachLoading("form-edit-ruangan", "btn-edit-ruangan", "Menyimpan...");
+    attachLoading("form-add-ruangan", "btn-add-ruangan", "Menambahkan...");
+    attachLoading("form-import-ruangan", "btn-upload-ruangan", "Memproses...");
+    attachLoading("form-edit", "btn-edit-save", "Mengupdate...");
+    attachLoading("form-add", "btn-add-save", "Menyimpan...");
+    attachLoading("form-import-jadwal", "btn-import-jadwal", "Memproses...");
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("_import") === "1") openModal('modal-import-ruangan');
+    if (params.get("show_add") === "1") openModal('modal-add-ruangan');
+});
+function togglePanduan() {
+    const box = document.getElementById("panduan-box");
+    const arrow = document.getElementById("arrow-panduan");
+    if (!box || !arrow) return;
+    box.classList.toggle("hidden");
+    arrow.textContent = box.classList.contains("hidden") ? "▾" : "▴";
+}
+function toggleRuanganStatus(id, el) {
+    if (!el) return;
+    el.disabled = true;
+    fetch(`/ngadmin/ruangan/toggle/${id}`, { method: "POST" })
+        .then(r => r.json())
+        .then(() => { el.disabled = false; })
+        .catch(() => {
+            alert("Gagal mengubah status!");
+            el.checked = !el.checked;
+            el.disabled = false;
+        });
+}
+function filterRuangan() {
+    const search = (document.getElementById("cari-ruangan")?.value || "").toLowerCase();
+    const lantai = document.getElementById("filter-lantai")?.value || "";
+    const status = document.getElementById("filter-status")?.value || "";
+    document.querySelectorAll("#tabel-ruangan tbody tr").forEach(row => {
+        const kode = row.children[0].innerText.toLowerCase();
+        const nama = row.children[1].innerText.toLowerCase();
+        const rowLantai = row.children[3].innerText.trim();
+        const rowStatus = row.children[6].innerText.toLowerCase();
+        let show = true;
+        if (search && !(kode.includes(search) || nama.includes(search))) show = false;
+        if (lantai && rowLantai !== lantai) show = false;
+        if (status && !rowStatus.includes(status)) show = false;
+        row.style.display = show ? "" : "none";
+    });
+}
+function openEditRuangan(id) {
+    fetch(`/ngadmin/ruangan/get/${id}`).then(res => res.json()).then(d => {
+        const f = document.getElementById("form-edit-ruangan");
+        if (!f) return alert("Form edit ruangan tidak ditemukan.");
+        f.action = `/ngadmin/ruangan/update/${id}`;
+        f.querySelector('input[name="kode_ruang"]').value = d.kode_ruang;
+        f.querySelector('input[name="nama_ruang"]').value = d.nama_ruang;
+        f.querySelector('input[name="gedung"]').value = d.gedung || "";
+        f.querySelector('input[name="lantai"]').value = d.lantai || "";
+        f.querySelector('input[name="kapasitas"]').value = d.kapasitas || "";
+        f.querySelector('textarea[name="fasilitas"]').value = d.fasilitas || "";
+        f.querySelector('textarea[name="catatan"]').value = d.catatan || "";
+        f.querySelector('select[name="aktif"]').value = d.aktif ? "1" : "0";
+        openModal("modal-edit-ruangan");
+    }).catch(err => {
+        console.error("Gagal memuat data ruangan:", err);
+        alert("Gagal memuat data ruangan.");
+    });
+}
+</script>
+{% endblock %}

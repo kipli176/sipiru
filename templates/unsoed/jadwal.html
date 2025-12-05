@@ -1,0 +1,388 @@
+{% extends "unsoed/base.html" %}
+{% block content %}
+<div class="space-y-10">
+<div class="flex items-center justify-between">
+    <div>
+        <h1 class="text-3xl font-bold">Jadwal Kuliah</h1>
+        <p class="text-xs text-gray-500 mt-1">Kelola jadwal kuliah berdasarkan fakultas.</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+        <button class="btn bg-black text-white shadow" onclick="openModal('modal-add')">➕ Tambah Jadwal</button>
+        <button class="btn bg-[#FFD600] text-black shadow" onclick="openModal('modal-import')">Import Data</button>
+    </div>
+</div>
+<div class="cg-card mt-4">
+    <button onclick="togglePanduan()" class="text-blue-600 font-semibold text-sm flex items-center gap-1">
+        <span>Panduan Penggunaan</span>
+        <span id="arrow-panduan">▾</span>
+    </button>
+    <div id="panduan-box" class="mt-3 hidden text-sm text-gray-700 space-y-2 leading-relaxed">
+        <p>• Halaman ini untuk mengelola <b>Jadwal Kuliah</b> berdasarkan fakultas.</p>
+        <p>• Gunakan <b>Tambah Jadwal</b> untuk menambahkan jadwal baru.</p>
+        <p>• Gunakan <b>Import Data</b> jika ingin mengupload jadwal massal melalui Excel.</p>
+        <p>• Gunakan filter di bawah untuk pencarian cepat berdasarkan hari, ruangan, MK, dan dosen.</p>
+    </div>
+</div>
+<div class="cg-card grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+    <div>
+        <label class="font-semibold">Filter Hari</label>
+        <input id="filter-hari" class="w-full border p-2 rounded-lg mt-1" />
+    </div>
+    <div>
+        <label class="font-semibold">Filter Ruangan</label>
+        <input id="filter-ruang" class="w-full border p-2 rounded-lg mt-1" />
+    </div>
+    <div>
+        <label class="font-semibold">Filter Mata Kuliah</label>
+        <input id="filter-mk" class="w-full border p-2 rounded-lg mt-1" />
+    </div>
+    <div>
+        <label class="font-semibold">Filter Dosen</label>
+        <input id="filter-dosen" class="w-full border p-2 rounded-lg mt-1" />
+    </div>
+</div>
+<div class="cg-card overflow-x-auto">
+    <table id="jadwal-table" class="w-full text-sm">
+        <thead class="bg-gray-100 border-b font-semibold">
+            <tr>
+                <th class="px-4 py-3 text-left">Hari</th>
+                <th class="px-4 py-3 text-left">Jam</th>
+                <th class="px-4 py-3 text-left">Ruangan</th>
+                <th class="px-4 py-3 text-left">Mata Kuliah</th>
+                <th class="px-4 py-3 text-left">Kode MK</th>
+                <th class="px-4 py-3 text-left">Kelas</th>
+                <th class="px-4 py-3 text-left">Dosen</th>
+                <th class="px-4 py-3 text-left">Semester</th>
+                <th class="px-4 py-3 text-left w-32">Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for j in data %}
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-4 py-2">{{ j.hari_nama }}</td>
+                <td class="px-4 py-2">{{ j.jam_mulai }}–{{ j.jam_selesai }}</td>
+                <td class="px-4 py-2">{{ j.kode_ruang }}</td>
+                <td class="px-4 py-2">{{ j.mata_kuliah }}</td>
+                <td class="px-4 py-2">{{ j.kode_mk }}</td>
+                <td class="px-4 py-2">{{ j.kelas }}</td>
+                <td class="px-4 py-2">{{ j.dosen }}</td>
+                <td class="px-4 py-2">{{ j.semester_kode }}</td>
+                <td class="px-4 py-2 space-x-2 whitespace-nowrap">
+                    <button class="text-blue-600 font-semibold hover:underline text-sm" onclick="loadDetail('{{ j.id }}')">Detail</button>
+                    <button class="text-blue-600 font-semibold hover:underline text-sm" onclick="loadEdit('{{ j.id }}')">Edit</button>
+                    <a href="/ngadmin/jadwal/delete/{{ j.id }}" onclick="return confirm('Hapus jadwal ini?')" class="text-red-600 font-semibold hover:underline text-sm">Hapus</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="flex justify-between items-center">
+    <p class="text-sm">Menampilkan {{ start }}–{{ end }} dari {{ total }}</p>
+    <div class="flex gap-2">
+        {% if page > 1 %}
+        <a href="?page={{ page - 1 }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">‹ Prev</a>
+        {% endif %}
+        {% if end < total %}
+        <a href="?page={{ page + 1 }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Next ›</a>
+        {% endif %}
+    </div>
+</div>
+</div>
+
+<div id="modal-add" class="modal-block hidden max-w-2xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Tambah Jadwal Kuliah</h2>
+    <p class="text-gray-600 text-sm mb-4">Isi form berikut untuk menambahkan jadwal baru. Pastikan <span class="font-semibold">hari, waktu, ruangan</span> sudah benar.</p>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="mb-4">
+            {% for category, message in messages %}
+                <div class="p-3 mb-2 rounded text-sm border {% if category == 'success' %}bg-green-100 text-green-800 border-green-300{% elif category == 'error' %}bg-red-100 text-red-800 border-red-300{% else %}bg-gray-100 text-gray-800 border-gray-300{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+    <form id="form-add" method="POST" action="/ngadmin/jadwal/add" class="space-y-4">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Semester <span class="text-red-600">*</span></label>
+            <input name="semester_kode" class="w-full border p-3 rounded-lg mt-1" placeholder="2025-GASAL" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Hari <span class="text-red-600">*</span></label>
+                <select id="add-hari" name="hari" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                    <option value="">- pilih hari -</option>
+                    <option>senin</option><option>selasa</option><option>rabu</option><option>kamis</option><option>jumat</option><option>sabtu</option><option>minggu</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Waktu Kuliah <span class="text-red-600">*</span></label>
+                <select id="add-time-slot" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                    <option value="">- pilih waktu -</option>
+                    {% for t in time_slot %}<option value="{{ t.start_time }}|{{ t.end_time }}">{{ t.nama }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <input type="hidden" id="add-hari-dow" name="hari_dow">
+        <input type="hidden" id="add-jam-mulai" name="jam_mulai">
+        <input type="hidden" id="add-jam-selesai" name="jam_selesai">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Ruangan <span class="text-red-600">*</span></label>
+            <select name="ruangan_id" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                <option value="">- pilih ruangan -</option>
+                {% for r in ruang %}<option value="{{ r.id }}">{{ r.kode_ruang }} — {{ r.nama_ruang }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Mata Kuliah <span class="text-red-600">*</span></label>
+                <input name="mata_kuliah" class="w-full border p-3 rounded-lg mt-1" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kode MK</label>
+                <input name="kode_mk" class="w-full border p-3 rounded-lg mt-1" placeholder="Opsional">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kelas</label>
+                <input name="kelas" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Dosen</label>
+                <input name="dosen" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Tanggal Mulai</label>
+                <input type="date" name="tanggal_mulai" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Tanggal Selesai</label>
+                <input type="date" name="tanggal_selesai" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-4">
+            <button type="button" onclick="closeModal('modal-add')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-add-save" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">Simpan</button>
+        </div>
+    </form>
+</div>
+
+<div id="modal-edit" class="modal-block hidden max-w-2xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Edit Jadwal Kuliah</h2>
+    <p class="text-gray-600 text-sm mb-4">Perbarui informasi jadwal kuliah berikut. Pastikan data sudah benar sebelum menyimpan perubahan.</p>
+    <form id="form-edit" method="POST" class="space-y-4">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Semester <span class="text-red-600">*</span></label>
+            <input id="e-semester" name="semester_kode" class="w-full border p-3 rounded-lg mt-1" required>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Hari <span class="text-red-600">*</span></label>
+                <select id="e-hari" name="hari" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                    <option>senin</option><option>selasa</option><option>rabu</option><option>kamis</option><option>jumat</option><option>sabtu</option><option>minggu</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Waktu Kuliah <span class="text-red-600">*</span></label>
+                <select id="e-time-slot" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                    <option value="">- pilih waktu -</option>
+                    {% for t in time_slot %}<option value="{{ t.start_time }}|{{ t.end_time }}">{{ t.nama }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <input type="hidden" id="e-hari-dow" name="hari_dow">
+        <input type="hidden" id="e-jam-mulai" name="jam_mulai">
+        <input type="hidden" id="e-jam-selesai" name="jam_selesai">
+        <div>
+            <label class="block text-sm font-semibold text-gray-700">Ruangan <span class="text-red-600">*</span></label>
+            <select id="e-ruangan" name="ruangan_id" class="w-full border p-3 rounded-lg mt-1 bg-gray-50" required>
+                {% for r in ruang %}<option value="{{ r.id }}">{{ r.kode_ruang }} — {{ r.nama_ruang }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Mata Kuliah <span class="text-red-600">*</span></label>
+                <input id="e-mk" name="mata_kuliah" class="w-full border p-3 rounded-lg mt-1" required>
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Kode MK</label>
+                <input id="e-kodemk" name="kode_mk" class="w-full border p-3 rounded-lg mt-1">
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-semibold text-gray-700">Kelas</label><input id="e-kelas" name="kelas" class="w-full border p-3 rounded-lg mt-1"></div>
+            <div><label class="block text-sm font-semibold text-gray-700">Dosen</label><input id="e-dosen" name="dosen" class="w-full border p-3 rounded-lg mt-1"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-semibold text-gray-700">Tanggal Mulai</label><input id="e-tgl_mulai" type="date" name="tanggal_mulai" class="w-full border p-3 rounded-lg mt-1"></div>
+            <div><label class="block text-sm font-semibold text-gray-700">Tanggal Selesai</label><input id="e-tgl_selesai" type="date" name="tanggal_selesai" class="w-full border p-3 rounded-lg mt-1"></div>
+        </div>
+        <div class="flex justify-end gap-2 pt-4">
+            <button type="button" onclick="closeModal('modal-edit')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-edit-save" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2">Update</button>
+        </div>
+    </form>
+</div>
+
+<div id="modal-detail" class="modal-block hidden max-w-2xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Detail Jadwal Kuliah</h2>
+    <div id="detail-body" class="grid grid-cols-2 gap-4 text-sm"></div>
+    <div class="flex justify-end pt-5">
+        <button onclick="closeModal('modal-detail')" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Tutup</button>
+    </div>
+</div>
+
+<div id="modal-import" class="modal-block hidden max-w-3xl bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Import Jadwal Kuliah</h2>
+    <p class="text-gray-700 text-sm leading-relaxed mb-4">Silakan unggah berkas <span class="font-semibold">CSV atau Excel (.xlsx)</span> berisi jadwal kuliah.<br><span class="text-red-600 font-semibold">Semua jadwal fakultas akan diganti (replace total)</span> dengan data yang ada di berkas ini.<br><br><span class="font-semibold text-blue-800">Disarankan untuk melakukan Export terlebih dahulu</span> agar struktur tabel dan format kolom sudah pasti benar.</p>
+    <div class="mb-4"><a href="/ngadmin/jadwal/export" class="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded">Export Jadwal Saat Ini</a></div>
+    <div class="mb-5 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="font-semibold text-blue-900 mb-1 text-sm">Format kolom:</p>
+        <code class="block bg-white px-3 py-2 rounded border border-blue-100 text-xs mb-3">hari, jam_mulai, jam_selesai, kode_ruang, mata_kuliah, kelas, dosen, semester_kode, kode_mk, tanggal_mulai, tanggal_selesai</code>
+        <p class="font-semibold text-blue-900 mb-2 text-sm">Contoh Tabel:</p>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-xs border border-blue-200 bg-white">
+                <thead><tr class="bg-blue-100 text-blue-900"><th class="border px-2 py-1">hari</th><th class="border px-2 py-1">jam_mulai</th><th class="border px-2 py-1">jam_selesai</th><th class="border px-2 py-1">kode_ruang</th><th class="border px-2 py-1">mata_kuliah</th><th class="border px-2 py-1">kelas</th><th class="border px-2 py-1">dosen</th><th class="border px-2 py-1">semester_kode</th><th class="border px-2 py-1">kode_mk</th><th class="border px-2 py-1">tanggal_mulai</th><th class="border px-2 py-1">tanggal_selesai</th></tr></thead>
+                <tbody>
+                    <tr><td class="border px-2 py-1">senin</td><td class="border px-2 py-1">07:00</td><td class="border px-2 py-1">08:40</td><td class="border px-2 py-1">R101</td><td class="border px-2 py-1">Pengantar Akuntansi</td><td class="border px-2 py-1">A</td><td class="border px-2 py-1">Dr. Ahmad</td><td class="border px-2 py-1">2025-GASAL</td><td class="border px-2 py-1">AKU101</td><td class="border px-2 py-1">2025-09-02</td><td class="border px-2 py-1">2025-12-20</td></tr>
+                    <tr><td class="border px-2 py-1">rabu</td><td class="border px-2 py-1">10:20</td><td class="border px-2 py-1">12:00</td><td class="border px-2 py-1">R201</td><td class="border px-2 py-1">Dasar Pemrograman</td><td class="border px-2 py-1">A</td><td class="border px-2 py-1">Ibu Sari</td><td class="border px-2 py-1">2025-GASAL</td><td class="border px-2 py-1">IF101</td><td class="border px-2 py-1">2025-09-02</td><td class="border px-2 py-1">2025-12-20</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="mb-4">
+            {% for category, message in messages %}
+                <div class="p-3 mb-2 rounded flex items-center space-x-2 {% if category == 'success' %}bg-green-100 text-green-800 border border-green-300{% elif category == 'error' %}bg-red-100 text-red-800 border border-red-300{% else %}bg-gray-100 text-gray-800 border border-gray-300{% endif %}"><span>{% if category == 'success' %}✔{% elif category == 'error' %}✖{% else %}ℹ{% endif %}</span><span>{{ message }}</span></div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}
+    <form id="form-import-jadwal" method="POST" action="/ngadmin/jadwal/import" enctype="multipart/form-data" class="space-y-3">
+        <label class="block text-sm font-medium text-gray-700">Pilih Berkas CSV/Excel</label>
+        <input type="file" name="file" accept=".csv, .xlsx" class="w-full border border-gray-300 p-3 rounded-lg bg-gray-50" required>
+        <div class="flex justify-end gap-2">
+            <button type="button" onclick="closeModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded">Batal</button>
+            <button id="btn-import-jadwal" class="bg-black text-white px-4 py-2 rounded flex items-center justify-center gap-2">Import</button>
+        </div>
+    </form>
+    <p class="text-xs text-gray-500 mt-4">Pastikan format file mengikuti contoh tabel untuk menghindari error saat import.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function attachLoading(formId, btnId, label) {
+    const form = document.getElementById(formId);
+    const btn = document.getElementById(btnId);
+    if (!form || !btn) return;
+    form.addEventListener("submit", function () {
+        btn.disabled = true;
+        btn.classList.add("opacity-70", "cursor-not-allowed");
+        btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8.001 8.001 0 00-7.938 7z"></path></svg><span>${label}</span>`;
+    });
+}
+document.addEventListener("DOMContentLoaded", function () {
+    attachLoading("form-add", "btn-add-save", "Menyimpan...");
+    attachLoading("form-edit", "btn-edit-save", "Mengupdate...");
+    attachLoading("form-import-jadwal", "btn-import-jadwal", "Memproses...");
+    attachLoading("form-add-ruangan", "btn-add-ruangan", "Menambahkan...");
+    attachLoading("form-edit-ruangan", "btn-edit-ruangan", "Menyimpan...");
+});
+function togglePanduan() {
+    const box = document.getElementById("panduan-box");
+    const arrow = document.getElementById("arrow-panduan");
+    if (!box || !arrow) return;
+    box.classList.toggle("hidden");
+    arrow.textContent = box.classList.contains("hidden") ? "▾" : "▴";
+}
+function applyFilters(){
+    const hari = document.getElementById("filter-hari").value.toLowerCase();
+    const ruang = document.getElementById("filter-ruang").value.toLowerCase();
+    const mk = document.getElementById("filter-mk").value.toLowerCase();
+    const dosen = document.getElementById("filter-dosen").value.toLowerCase();
+    document.querySelectorAll("#jadwal-table tbody tr").forEach(tr => {
+        const t = tr.innerText.toLowerCase();
+        tr.style.display = (t.includes(hari) && t.includes(ruang) && t.includes(mk) && t.includes(dosen)) ? "" : "none";
+    });
+}
+["filter-hari","filter-ruang","filter-mk","filter-dosen"].forEach(id => document.getElementById(id)?.addEventListener("input", applyFilters));
+const HARI_MAP = {"senin":1,"selasa":2,"rabu":3,"kamis":4,"jumat":5,"sabtu":6,"minggu":7};
+function mapHariToDow(selectId, hiddenId) {
+    const select = document.getElementById(selectId);
+    const hidden = document.getElementById(hiddenId);
+    if (!select || !hidden) return;
+    select.addEventListener("change", e => { hidden.value = HARI_MAP[e.target.value] || ""; });
+}
+mapHariToDow("add-hari", "add-hari-dow");
+mapHariToDow("e-hari", "e-hari-dow");
+function slotAutoFill(slotId, startId, endId) {
+    const slot = document.getElementById(slotId);
+    const start = document.getElementById(startId);
+    const end = document.getElementById(endId);
+    if (!slot || !start || !end) return;
+    slot.addEventListener("change", e => {
+        if (!e.target.value) return;
+        const [s, e2] = e.target.value.split("|");
+        start.value = s;
+        end.value = e2;
+    });
+}
+slotAutoFill("add-time-slot", "add-jam-mulai", "add-jam-selesai");
+slotAutoFill("e-time-slot", "e-jam-mulai", "e-jam-selesai");
+function loadEdit(id){
+    fetch(`/ngadmin/jadwal/get/${id}`).then(r => r.json()).then(d => {
+        const form = document.getElementById("form-edit");
+        form.action = `/ngadmin/jadwal/update/${id}`;
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        set("e-semester", d.semester_kode);
+        set("e-hari", d.hari_nama);
+        set("e-hari-dow", d.hari_dow);
+        set("e-jam-mulai", d.jam_mulai);
+        set("e-jam-selesai", d.jam_selesai);
+        [...document.getElementById("e-time-slot").options].forEach(o=>{ o.selected = (o.value === `${d.jam_mulai}|${d.jam_selesai}`); });
+        set("e-ruangan", d.ruangan_id);
+        set("e-mk", d.mata_kuliah);
+        set("e-kodemk", d.kode_mk || "");
+        set("e-kelas", d.kelas || "");
+        set("e-dosen", d.dosen || "");
+        set("e-tgl_mulai", d.tanggal_mulai);
+        set("e-tgl_selesai", d.tanggal_selesai);
+        openModal("modal-edit");
+    });
+}
+function loadDetail(id) {
+    fetch(`/ngadmin/jadwal/detail/${id}`).then(r => r.json()).then(d => {
+        const body = document.getElementById("detail-body");
+        body.innerHTML = `
+            ${detailItem("ID", d.id)}
+            ${detailItem("Semester", d.semester_kode)}
+            ${detailItem("Hari", `${d.hari_nama} (${d.hari_dow})`)}
+            ${detailItem("Jam", `${d.jam_mulai} – ${d.jam_selesai}`)}
+            ${detailItem("Ruangan", `${d.kode_ruang} — ${d.nama_ruang}`)}
+            ${detailItem("Mata Kuliah", d.mata_kuliah)}
+            ${detailItem("Kode MK", d.kode_mk || "-")}
+            ${detailItem("Kelas", d.kelas || "-")}
+            ${detailItem("Dosen", d.dosen || "-")}
+            ${detailItem("Tanggal Mulai", d.tanggal_mulai || "-")}
+            ${detailItem("Tanggal Selesai", d.tanggal_selesai || "-")}
+            ${detailItem("Fakultas", d.fakultas_id)}
+            ${detailItem("Dibuat Pada", d.created_at)}
+        `;
+        openModal("modal-detail");
+    });
+}
+function detailItem(label, value) {
+    return `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200"><div class="text-xs uppercase text-gray-500 font-semibold mb-1">${label}</div><div class="text-gray-800 font-medium">${value}</div></div>`;
+}
+document.addEventListener("DOMContentLoaded", function(){
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("_import") === "1") openModal('modal-import');
+    if (p.get("show_add") === "1") openModal("modal-add");
+});
+</script>
+{% endblock %}

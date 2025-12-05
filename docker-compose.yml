@@ -1,0 +1,19 @@
+services:
+  web:
+    build: .
+    container_name: sipiru
+    restart: always 
+    env_file:
+      - .env   # <--- load environment untuk container
+    environment:
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    networks:
+      - cloudflared
+
+networks:
+  cloudflared:
+    external: true

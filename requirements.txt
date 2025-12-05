@@ -1,0 +1,7 @@
+Flask
+qrcode
+Pillow
+openpyxl
+psycopg2-binary
+gunicorn
+python-dotenv

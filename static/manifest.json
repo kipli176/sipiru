@@ -1,0 +1,20 @@
+{
+  "name": "Sistem Peminjaman Ruangan UNSOED",
+  "short_name": "SIPIRU",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#FFD600",
+  "icons": [
+    {
+      "src": "/static/logo.webp",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/logo.webp",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

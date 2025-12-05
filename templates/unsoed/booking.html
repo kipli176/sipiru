@@ -1,0 +1,208 @@
+{% extends "unsoed/base.html" %}
+{% block content %}
+<div class="space-y-10">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold">Peminjaman Ruangan</h1>
+            <p class="text-xs text-gray-500 mt-1">Kelola daftar booking ruangan berdasarkan fakultas.</p>
+        </div>
+        <button onclick="openAddBooking()"
+            class="btn bg-black text-white shadow">➕ Tambah Booking</button>
+    </div>
+
+    <div class="cg-card">
+        <button onclick="togglePanduan()" class="text-blue-600 font-semibold text-sm flex items-center gap-1">
+            <span>Panduan Penggunaan</span>
+            <span id="arrow-panduan">▾</span>
+        </button>
+        <div id="panduan-box" class="mt-3 hidden text-sm text-gray-700 space-y-2 leading-relaxed">
+            <p>• Halaman ini menampilkan daftar booking ruangan berdasarkan <b>fakultas pemilik ruangan</b>.</p>
+            <p>• Gunakan tombol <b>Modal</b> atau <b>Kelola</b> untuk memverifikasi atau melihat detail booking.</p>
+            <p>• Klik <b>Tambah Booking</b> untuk membuat booking baru melalui halaman CGV Booking.</p>
+        </div>
+    </div>
+
+    <div class="cg-card grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+        <div>
+            <label class="font-semibold">Cari</label>
+            <input id="filter-search" class="w-full border p-2 rounded-lg mt-1"
+                placeholder="Nama peminjam / kegiatan / ruangan">
+        </div>
+        <div>
+            <label class="font-semibold">Tanggal</label>
+            <input id="filter-date" type="date" class="w-full border p-2 rounded-lg mt-1">
+        </div>
+        <div>
+            <label class="font-semibold">Status</label>
+            <select id="filter-status" class="w-full border p-2 rounded-lg mt-1">
+                <option value="">Semua</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+        </div>
+        <div>
+            <label class="font-semibold">Ruangan</label>
+            <input id="filter-ruang" class="w-full border p-2 rounded-lg mt-1" placeholder="Contoh: A101">
+        </div>
+    </div>
+
+    <div class="cg-card overflow-x-auto">
+        <table id="booking-table" class="w-full text-sm">
+            <thead class="bg-gray-100 border-b font-semibold">
+                <tr>
+                    <th class="px-4 py-3 text-left">Tanggal</th>
+                    <th class="px-4 py-3 text-left">Ruangan</th>
+                    <th class="px-4 py-3 text-left">Jam</th>
+                    <th class="px-4 py-3 text-left">Peminjam</th>
+                    <th class="px-4 py-3 text-left">Kegiatan</th>
+                    <th class="px-4 py-3 text-left">Status</th>
+                    <th class="px-4 py-3 text-left w-40">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+                {% for b in data %}
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="px-4 py-2">{{ b.tanggal|indo_full}}</td>
+                    <td class="px-4 py-2">{{ b.kode_ruang }}</td>
+                    <td class="px-4 py-2">{{ b.jam_mulai }}–{{ b.jam_selesai }}</td>
+                    <td class="px-4 py-2">{{ b.nama_peminjam }}</td>
+                    <td class="px-4 py-2">{{ b.kegiatan }}</td>
+                    <td class="px-4 py-2">
+                        {% if b.status == "pending" %}
+                        <span
+                            class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">Pending</span>
+                        {% elif b.status == "approved" %}
+                        <span
+                            class="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Approved</span>
+                        {% else %}
+                        <span
+                            class="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 whitespace-nowrap space-x-2">
+                        <button onclick="openTicketModal('{{ b.group_id }}')"
+                            class="text-green-600 font-semibold hover:underline text-sm">Detail</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div id="empty-message" class="hidden py-8 text-center text-gray-500 text-sm">Tidak ada data yang cocok dengan
+            filter Anda.</div>
+    </div>
+
+    <div class="flex justify-between items-center">
+        <p class="text-sm">Menampilkan {{ start }}–{{ end }} dari {{ total }}</p>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">‹ Prev</a>
+            {% endif %}
+            {% if end < total %} <a href="?page={{ page + 1 }}"
+                class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm">Next ›</a>
+                {% endif %}
+        </div>
+    </div>
+</div>
+
+<div id="modal-ticket" class="modal-block hidden">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Kelola Booking</h2>
+        <button id="btn-fullscreen-ticket" onclick="toggleFullscreen('modal-ticket')"
+            class="text-blue-600 hover:underline text-sm">↗ Fullscreen</button>
+    </div>
+    <div class="relative">
+        <div id="loader-ticket" class="absolute inset-0 flex items-center justify-center bg-white/70 hidden">
+            <div class="animate-spin rounded-full h-10 w-10 border-2 border-b-transparent border-gray-500"></div>
+        </div>
+        <iframe id="iframe-ticket" src="" class="w-full rounded-lg border" style="height: 70vh;"></iframe>
+    </div>
+    <div class="flex justify-end pt-4">
+        <button onclick="closeModal()" class="btn bg-gray-300">Tutup</button>
+    </div>
+</div>
+
+<div id="modal-add-booking" class="modal-block hidden">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Tambah Booking</h2>
+        <button id="btn-fullscreen-add" onclick="toggleFullscreen('modal-add-booking')"
+            class="text-blue-600 hover:underline text-sm">↗ Fullscreen</button>
+    </div>
+    <div class="relative">
+        <div id="loader-add" class="absolute inset-0 flex items-center justify-center bg-white/70 hidden">
+            <div class="animate-spin rounded-full h-10 w-10 border-2 border-b-transparent border-gray-500"></div>
+        </div>
+        <iframe id="iframe-add-booking" src="" class="w-full rounded-lg border" style="height: 70vh;"></iframe>
+    </div>
+    <div class="flex justify-end pt-4">
+        <button onclick="closeModal()" class="btn bg-gray-300">Tutup</button>
+    </div>
+</div>
+ 
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function togglePanduan() {
+        const box = document.getElementById("panduan-box");
+        const arrow = document.getElementById("arrow-panduan");
+        box.classList.toggle("hidden");
+        arrow.textContent = box.classList.contains("hidden") ? "▾" : "▴";
+    }
+
+    function applyFilters() {
+        let filter_search = document.getElementById("filter-search");
+        let filter_date = document.getElementById("filter-date");
+        let filter_status = document.getElementById("filter-status");
+        let filter_ruang = document.getElementById("filter-ruang");
+        let s = filter_search.value.toLowerCase();
+        let d = filter_date.value;
+        let st = filter_status.value.toLowerCase();
+        let rg = filter_ruang.value.toLowerCase();
+        let rows = document.querySelectorAll("#booking-table tbody tr");
+        let anyVisible = false;
+        rows.forEach(tr => {
+            const txt = tr.innerText.toLowerCase();
+            const tanggal = tr.children[0].innerText.trim();
+            const status = tr.children[5].innerText.trim().toLowerCase();
+            const ruang = tr.children[1].innerText.trim().toLowerCase();
+            let ok = true;
+            if (s && !txt.includes(s)) ok = false;
+            if (d && tanggal !== d) ok = false;
+            if (st && status !== st) ok = false;
+            if (rg && !ruang.includes(rg)) ok = false;
+            tr.style.display = ok ? "" : "none";
+            if (ok) anyVisible = true
+        });
+        document.getElementById("empty-message").classList.toggle("hidden", anyVisible);
+    }
+    ["filter-search", "filter-date", "filter-status", "filter-ruang"].forEach(id => document.getElementById(id)
+        .addEventListener("input", applyFilters));
+
+    function openTicketModal(group_id) {
+        const iframe = document.getElementById("iframe-ticket");
+        const loader = document.getElementById("loader-ticket");
+        loader.classList.remove("hidden");
+        iframe.src = `/cgv/ticket/${group_id}`;
+        iframe.onload = () => loader.classList.add("hidden");
+        openModal("modal-ticket");
+    }
+
+    function openAddBooking() {
+        const iframe = document.getElementById("iframe-add-booking");
+        const loader = document.getElementById("loader-add");
+        loader.classList.remove("hidden");
+        iframe.src = "/";
+        iframe.onload = () => loader.classList.add("hidden");
+        openModal("modal-add-booking");
+    }
+
+    function toggleFullscreen(id) {
+        const m = document.getElementById(id);
+        const btn = id === "modal-ticket" ? document.getElementById("btn-fullscreen-ticket") : document.getElementById(
+            "btn-fullscreen-add");
+        m.classList.toggle("fullscreen-modal");
+        btn.textContent = m.classList.contains("fullscreen-modal") ? "↙ Exit Fullscreen" : "↗ Fullscreen";
+    }
+</script>
+{% endblock %}

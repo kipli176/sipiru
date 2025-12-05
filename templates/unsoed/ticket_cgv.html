@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <title>Tiket Peminjaman Ruangan UNSOED</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta property="og:title" content="Tiket Peminjaman Ruangan UNSOED">
+    <meta property="og:description" content="Gunakan tiket digital ini untuk verifikasi peminjaman ruangan UNSOED. Scan QR Code saat tiba di lokasi. Simpan atau bagikan tiket ini untuk akses cepat.">
+    <meta property="og:image" content="{{ url_for('qr_image', group_id=booking.group_id, _external=True) }}">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="600">
+    <meta property="og:image:height" content="600">
+    <meta property="og:image:alt" content="QR Code Tiket Peminjaman Ruangan UNSOED">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="website">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body { background: #F4F4F4 }
+        .cg-card {
+            border-radius: 16px;
+            background: white;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1)
+        }
+        @media print {
+            body * { display: none !important }
+            .print-area, .print-area * {
+                display: block !important;
+                visibility: visible !important
+            }
+            .print-area {
+                position: absolute;
+                top: 0; left: 0;
+                width: 100% !important;
+                padding: 0; margin: 0;
+                box-shadow: none !important;
+                background: white !important;
+                border-radius: 0 !important
+            }
+            body { background: white !important }
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+<header class="bg-[#111] text-white px-4 py-3 text-center text-lg font-bold shadow">
+    Tiket Peminjaman Ruangan
+</header>
+
+<div class="max-w-md mx-auto px-4 py-6">
+
+    <div class="cg-card p-5 mb-6 print-area">
+        <div class="flex justify-center mb-4">
+            <img src="data:image/png;base64,{{ booking.qr_code }}" alt="QR Code" class="w-48 h-48 shadow-md rounded-lg">
+        </div>
+
+        {% set st = booking.status %}
+        <div class="text-center mb-4">
+            <span class="
+                px-4 py-2 rounded-full text-sm font-bold
+                {% if st=='approved' %}
+                    bg-green-500 text-white
+                {% elif st=='pending' %}
+                    bg-yellow-400 text-black
+                {% else %}
+                    bg-red-500 text-white
+                {% endif %}
+            ">
+                {{ st|upper }}
+            </span>
+        </div>
+
+        <h2 class="font-bold text-xl text-center">{{ ruangan.kode_ruang }} – {{ ruangan.nama_ruang }}</h2>
+        <p class="text-center text-gray-600 text-sm">{{ ruangan.gedung }} – Lt {{ ruangan.lantai }}</p>
+
+        <hr class="my-4">
+
+        <div class="mb-4">
+            <div class="text-sm font-semibold text-gray-600">Tanggal</div>
+            <div class="text-base font-bold">{{ booking.tanggal }}</div>
+        </div>
+
+        <div class="mb-4">
+            <div class="text-sm font-semibold text-gray-600">Jam</div>
+            <div class="flex flex-wrap gap-2 mt-1">
+                {% for s in slots %}
+                <div class="px-3 py-1 bg-[#FFD600] text-[#111] rounded-full text-sm font-semibold shadow">
+                    {{ s.start_time.strftime('%H:%M') }}–{{ s.end_time.strftime('%H:%M') }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="space-y-2 text-sm">
+            <div><b>Nama Peminjam:</b> {{ booking.nama_peminjam }}</div>
+            <div><b>No HP:</b> {{ booking.hp }}</div>
+            <div><b>Kegiatan:</b> {{ booking.kegiatan }}</div>
+
+            {% if booking.fakultas_peminjam %}
+            <div><b>Fakultas:</b> {{ booking.fakultas_peminjam }}</div>
+            {% endif %}
+
+            {% if booking.asal_unit %}
+            <div><b>Unit:</b> {{ booking.asal_unit }}</div>
+            {% endif %}
+
+            {% if booking.asal_eksternal %}
+            <div><b>Eksternal:</b> {{ booking.asal_eksternal }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="space-y-3 mb-6">
+        <button onclick="shareTicket()" class="block w-full bg-[#111] text-white text-center py-3 rounded-lg font-bold shadow">
+            Bagikan Tiket
+        </button>
+
+        <button onclick="printTicket()" class="block w-full bg-white border text-black py-3 rounded-lg font-semibold shadow">
+            Cetak / PDF
+        </button>
+    </div>
+
+    {% if is_admin and booking.status == 'pending' %}
+    <div class="cg-card p-4 space-y-3 border-t-4 border-[#FFD600]">
+        <h3 class="font-bold text-lg text-center mb-3">Aksi Admin</h3>
+
+        <form method="POST" action="/cgv/admin/bookings/{{ booking.group_id }}/approve">
+            <button class="w-full bg-green-600 text-white py-3 rounded-lg font-bold shadow">
+                Approve
+            </button>
+        </form>
+
+        <form method="POST" action="/cgv/admin/bookings/{{ booking.group_id }}/reject">
+            <button class="w-full bg-red-600 text-white py-3 rounded-lg font-bold shadow">
+                Reject
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+    function shareTicket() {
+        const url = window.location.href;
+        let slotList = slotsData.map(s => `${s.start_time}–${s.end_time}`).join(", ");
+
+        const shareData = {
+            title: "Tiket Peminjaman Ruangan UNSOED",
+            text: `Tiket Peminjaman Ruangan UNSOED:\nRuangan: {{ ruangan.kode_ruang }}\nTanggal: {{ booking.tanggal }}\nJam: ${slotList}\n`,
+            url: url
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(err => console.log("Share dibatalkan:", err));
+        } else {
+            alert("Fitur Share tidak didukung di perangkat ini.");
+        }
+    }
+</script>
+
+<script>
+    function printTicket() {
+        const card = document.querySelector('.print-area');
+        const clone = card.cloneNode(true);
+        clone.style.boxShadow = "none";
+        clone.style.padding = "20px";
+        clone.style.margin = "0";
+        clone.style.width = "100%";
+        clone.style.position = "absolute";
+        clone.style.top = "0";
+        clone.style.left = "0";
+        clone.id = "print_clone";
+
+        document.body.appendChild(clone);
+        window.print();
+
+        window.onafterprint = function () {
+            const c = document.getElementById("print_clone");
+            if (c) c.remove();
+        };
+    }
+</script>
+
+</body>
+</html>

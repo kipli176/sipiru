@@ -1,0 +1,41 @@
+{% extends "unsoed/base.html" %}{% block content %}
+<section class="space-y-12">
+    <h1 class="text-3xl font-bold mb-4 tracking-wide">Dashboard</h1>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="cg-card stat-card"><div class="stat-icon">📄</div><div><div class="stat-title">Total Booking</div><div class="stat-value">{{ total_booking }}</div></div></div>
+        <div class="cg-card stat-card"><div class="stat-icon">🏫</div><div><div class="stat-title">Ruangan Aktif</div><div class="stat-value">{{ total_ruangan }}</div></div></div>
+        <div class="cg-card stat-card"><div class="stat-icon">📘</div><div><div class="stat-title">Total Jadwal Kuliah</div><div class="stat-value">{{ total_jadwal }}</div></div></div>
+    </div>
+    <div class="cg-card p-6 space-y-4">
+        <h2 class="text-xl font-bold">Aktivitas Terbaru</h2>
+        <p class="text-gray-600 text-sm">5 booking terakhir masuk.</p>
+        <div class="space-y-3">
+            {% for b in aktivitas_terbaru %}
+            <div class="activity-item">
+                <div class="flex items-center">
+                    <div class="avatar">{{ b.nama_peminjam[0] }}</div>
+                    <div><div class="font-semibold text-gray-900">{{ b.nama_peminjam }}</div><div class="text-xs text-gray-500">{{ b.kode_ruang }} • {{ b.tanggal|indo_full }} • <span class="status-badge status-approved">{{ b.jam_mulai }}-{{ b.jam_selesai }}</span></div></div>
+                </div>
+                {% if b.status == 'pending' %}<span class="status-badge status-pending">PENDING</span>{% elif b.status == 'approved' %}<span class="status-badge status-approved">APPROVED</span>{% else %}<span class="status-badge status-rejected">REJECTED</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-right pt-2"><a href="/ngadmin/booking" class="text-blue-500 font-semibold text-sm">Lihat semua →</a></div>
+    </div>
+    <div class="cg-card p-6 space-y-4">
+        <h2 class="text-xl font-bold">Jadwal Kuliah Hari Ini</h2>
+        <p class="text-gray-600 text-sm">Tanggal: {{ today|indo_full }}</p>
+        {% set slots = [(1, "07:00 - 09:45"),(2, "09:45 - 13:00"),(3, "13:00 - 16:00"),(4, "16:00 - 18:00")] %}
+        <div class="jadwal-4grid">
+            {% for sid, slabel in slots %}
+            <div class="slot-col">
+                <div class="slot-header">{{ slabel }}</div>
+                {% for j in jadwal_hari_ini %}{% if j.time_slot_id == sid %}
+                <div class="slot-card slot-color-{{ sid }}"><div class="slot-strip"></div><div class="slot-content"><div class="slot-matkul">{{ j.mata_kuliah or '-' }}</div><div class="slot-info"><b>{{ j.kode_ruang }}</b> — {{ j.dosen or '-' }}</div></div></div>
+                {% endif %}{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

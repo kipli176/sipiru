@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIPIRU - Sistem Peminjaman Ruangan UNSOED</title>
+<link rel="manifest" href="/static/manifest.json" />
+<meta name="theme-color" content="#FFD600">
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<script>
+tailwind.config = {
+    darkMode: 'class',
+    theme: {
+        extend: {
+            colors: {
+                unsoed: "#FFD600",
+                darkbg: "#111111",
+                darkcard: "#1B1B1B",
+                darkborder: "#555",
+                textdark: "#F5F5F5"
+            },
+            borderRadius: {
+                xl2: "20px",
+                xl3: "26px",
+            }
+        }
+    }
+}
+</script>
+
+<link rel="stylesheet" href="/static/unsoed.css" />
+</head>
+
+<body>
+<div id="installBanner"  style="position:sticky; top:0; z-index:9999;"
+     class="hidden bg-yellow-300 text-black p-4 flex items-center justify-between shadow-lg">
+    
+    <div>
+        <div class="font-bold text-lg">Install SIPIRU</div>
+        <div class="text-sm opacity-80">
+            Pasang aplikasi agar lebih cepat diakses.
+        </div>
+    </div>
+
+    <button id="btnInstallPWA" 
+            class="bg-black text-yellow-300 px-4 py-2 rounded-lg font-semibold">
+        Install
+    </button>
+</div>
+
+<!-- ==========================
+     HERO
+========================== -->
+<section id="hero_page" class="page active">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-wrapper">
+        <div class="hero-content fade-in-up text-center space-y-6">
+
+        <!-- Logo UNSOED -->
+        <img src="/static/logo.webp" 
+             alt="UNSOED"
+             class="w-20 mx-auto opacity-95 fade-in delay-1">
+
+        <!-- Title -->
+        <h1 class="text-2xl font-bold text-white fade-in delay-2 drop-shadow-lg">
+            Sistem Peminjaman Ruangan UNSOED
+        </h1>
+
+        <!-- Description -->
+        <p class="text-gray-200 fade-in delay-3 leading-relaxed px-4 drop-shadow-md">
+            Layanan untuk peminjaman ruangan rapat, kelas, dan fasilitas 
+            fakultas di lingkungan Universitas Jenderal Soedirman.
+        </p>
+
+        <!-- Button -->
+        <button onclick="showPage('fakultas_page')"
+                class="bg-yellow-400 text-black font-semibold px-6 py-3 rounded-xl shadow-xl hover:bg-yellow-300 active:scale-95 transition fade-in delay-4">
+            Mulai Peminjaman
+        </button>
+
+    </div>
+</section>
+
+
+
+
+<!-- ==========================
+     FAKULTAS
+========================== -->
+<section id="fakultas_page" class="page">
+    <div class="header">
+        <button class="header-btn" onclick="backTo('hero_page')">←</button>
+        <div class="header-title">Pilih Fakultas</div>
+        <button class="header-btn" onclick="toggleTheme()">🌓</button>
+    </div>
+    <div class="tutor-box">
+        <b>Panduan:</b> Pilih fakultas tempat ruangan berada. 
+        Jika Anda tidak yakin, tanyakan pada petugas gedung terkait.
+    </div>
+
+    <div id="fakultas_list" class="fac-list mt-6"></div>
+</section>
+
+
+<!-- ==========================
+     RUANGAN
+========================== -->
+<section id="ruangan_page" class="page">
+    <div class="header">
+        <button class="header-btn" onclick="backTo('fakultas_page')">←</button>
+        <div class="header-title">Pilih Ruangan</div>
+        <button class="header-btn" onclick="toggleTheme()">🌓</button>
+    </div>
+    <div class="tutor-box">
+        <b>Panduan:</b> Pilih ruangan berdasarkan kode, nama ruangan, 
+        gedung, serta kapasitas. Klik ruangan untuk melanjutkan ke pemilihan tanggal.
+    </div>
+
+    <div id="ruangan_list" class="mt-6"></div>
+</section>
+
+
+<!-- ==========================
+     TANGGAL
+========================== -->
+<section id="tanggal_page" class="page">
+    <div class="header">
+        <button class="header-btn" onclick="backTo('ruangan_page')">←</button>
+        <div class="header-title">Pilih Tanggal</div>
+        <button class="header-btn" onclick="toggleTheme()">🌓</button>
+    </div>
+    <div class="tutor-box">
+        <b>Panduan:</b> Gunakan panah untuk berpindah bulan, lalu 
+        pilih tanggal yang Anda inginkan. Tanggal dengan border kuning adalah hari ini.
+    </div>
+
+    <div id="calendar_header" class="text-center text-xl font-bold mt-4"></div>
+
+    <div class="flex justify-between px-8 text-3xl mt-2">
+        <button onclick="prevMonth()">‹</button>
+        <button onclick="nextMonth()">›</button>
+    </div>
+
+    <div class="grid grid-cols-7 text-center mt-4 opacity-80">
+        <div>Sen</div><div>Sel</div><div>Rab</div>
+        <div>Kam</div><div>Jum</div><div>Sab</div><div>Min</div>
+    </div>
+
+    <div id="calendar_grid" class="calendar-grid"></div>
+</section>
+
+
+<!-- ==========================
+     SLOT
+========================== -->
+<section id="slot_page" class="page">
+    <div class="header">
+        <button class="header-btn" onclick="backTo('tanggal_page')">←</button>
+        <div class="header-title">Pilih Slot</div>
+        <button class="header-btn" onclick="toggleTheme()">🌓</button>
+    </div>
+    <div class="tutor-box">
+        <b>Panduan:</b><br>
+        • Hijau = tersedia<br>
+        • Biru = sudah dibooking orang lain<br>
+        • Merah = ada jadwal kuliah<br><br>
+        Anda dapat memilih lebih dari satu slot, asalkan berurutan.
+        Setelah memilih slot, form peminjam akan muncul otomatis.
+    </div>
+
+    <div id="slot_list" class="mt-6"></div>
+</section>
+
+
+<!-- ==========================
+     BOTTOM SHEET
+========================== -->
+<section id="sheet">
+    <div id="sheet-handle"></div>
+    <button onclick="closeSheet()" class="w-full text-right text-3xl text-gray-400">&times;</button>
+
+
+    <h3 class="text-xl font-bold mb-3 text-gray-400">Data Peminjam</h3>
+
+    <div class="tutor-box">
+        <b>Isi data peminjam:</b><br>
+        • Pilih asal peminjam (Fakultas/Unit/Eksternal)<br>
+        • Isi nama, nomor HP, dan kegiatan<br>
+        • Data harus benar untuk verifikasi<br>
+    </div> 
+    <select id="asal_select" class="border p-3 rounded w-full mb-3 mt-3">
+        <option value="">Pilih Asal Peminjam</option>
+        <option value="fakultas">Mahasiswa/Dosen Fakultas</option>
+        <option value="unit">Unit</option>
+        <option value="eksternal">Eksternal</option>
+    </select>
+
+    <div id="asal_fakultas_box" class="hidden mb-3"> 
+        <select id="fakultas_peminjam_id" class="border p-3 rounded w-full"></select>
+    </div>
+
+    <input id="asal_unit" class="border p-3 rounded w-full hidden mb-3" placeholder="Nama Unit">
+    <input id="asal_eksternal" class="border p-3 rounded w-full hidden mb-3" placeholder="Nama Instansi">
+
+    <input id="nama" class="border p-3 rounded w-full mb-3" placeholder="Nama">
+    <input id="hp" class="border p-3 rounded w-full mb-3" placeholder="Nomor HP">
+    <textarea id="kegiatan" class="border p-3 rounded w-full mb-4 h-24" placeholder="Kegiatan"></textarea>
+
+    <button id="btnBooking"
+            onclick="submitBooking()"
+            class="w-full bg-unsoed text-black py-3 rounded-xl font-bold">
+        Buat Booking
+    </button>
+</section> 
+
+
+<!-- ==========================
+     JAVASCRIPT
+========================== -->
+<script src="/static/unsoed.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/static/service-worker.js")
+        .then(reg => console.log("Service Worker registered:", reg))
+        .catch(err => console.log("Service Worker error:", err));
+    });
+}
+</script>
+<script>
+let deferredPrompt;
+
+const installBanner = document.getElementById("installBanner");
+const btnInstallPWA = document.getElementById("btnInstallPWA");
+
+// Default: sembunyikan banner
+installBanner.classList.add("hidden");
+
+// Browser memicu event saat boleh diinstall
+window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Tampilkan banner install
+    installBanner.classList.remove("hidden");
+});
+
+// Saat tombol install ditekan
+btnInstallPWA.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+
+    const result = await deferredPrompt.userChoice;
+
+    if (result.outcome === "accepted") {
+        console.log("User menerima install");
+    } else {
+        console.log("User membatalkan install");
+    }
+
+    installBanner.classList.add("hidden");
+    deferredPrompt = null;
+});
+
+// Jika aplikasi sudah terinstal → sembunyikan notifikasi
+window.addEventListener("appinstalled", () => {
+    console.log("PWA installed");
+    installBanner.classList.add("hidden");
+});
+</script>
+
+
+</body>
+</html>
