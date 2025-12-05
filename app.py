@@ -5,6 +5,8 @@ import base64
 import qrcode
 from io import BytesIO
 from db import query_all, query_one, execute
+from flask_caching import Cache
+
 from helper import (
     # UTILITIES
     q, to_str, get_total, get_all_timeslots, parse_import_file,
@@ -35,6 +37,12 @@ from helper import (
 
 app = Flask(__name__)
 app.secret_key = "secret-key-ubah-nanti"
+
+cache = Cache(app, config={
+    "CACHE_TYPE": "SimpleCache",
+    "CACHE_DEFAULT_TIMEOUT": 60   # default cache 60 detik
+})
+
 
 # =====================================================
 # =============== HELPERS / SERVICE ===================
@@ -125,47 +133,68 @@ def get_time_slots():
     return rows
 
 def build_slot_status(ruangan_id, tanggal):
+
+    tanggal = str(tanggal).strip()
+
     slots = get_time_slots()
 
-    kuliah_rows = q("""
-        SELECT time_slot_id, mata_kuliah, kelas, dosen
+    rows = q("""
+        SELECT source, time_slot_id, mata_kuliah, kelas, dosen,
+               nama_peminjam, kegiatan
         FROM v_jadwal_ruang_harian
         WHERE ruangan_id = %s
           AND tanggal = %s
-          AND source = 'kuliah'
+          AND (source = 'kuliah' OR (source = 'booking'))
     """, (ruangan_id, tanggal))
 
-    booking_rows = q("""
-        SELECT time_slot_id, nama_peminjam, kegiatan
-        FROM booking_ruangan
-        WHERE ruangan_id = %s
-          AND tanggal = %s
-          AND is_active = TRUE
-    """, (ruangan_id, tanggal))
+    # pisahkan menjadi map
+    kuliah_map  = {}
+    booking_map = {}
 
-    kuliah_map = {r["time_slot_id"]: r for r in kuliah_rows}
-    booking_map = {r["time_slot_id"]: r for r in booking_rows}
+    for r in rows:
+        tid = int(r["time_slot_id"])
+        if r["source"] == "kuliah":
+            kuliah_map[tid] = r
+        else:  # booking
+            booking_map[tid] = r
 
     results = []
+
     for s in slots:
-        sid = s["id"]
+        sid = int(s["id"])
         label = f"{s['start_time'].strftime('%H:%M')} - {s['end_time'].strftime('%H:%M')}"
+
         kul = kuliah_map.get(sid)
         book = booking_map.get(sid)
 
         if kul:
-            ket = f"Kuliah {kul['mata_kuliah']} ({kul['kelas']}) — {kul['dosen']}"
-            color = "red"
+            results.append({
+                "id": sid,
+                "label": label,
+                "color": "red",
+                "keterangan": f"Kuliah {kul['mata_kuliah']} ({kul['kelas']}) — {kul['dosen']}"
+            })
         elif book:
-            ket = f"Booked: {book['nama_peminjam']} — {book['kegiatan']}"
-            color = "blue"
+            results.append({
+                "id": sid,
+                "label": label,
+                "color": "blue",
+                "keterangan": f"Booked: {book['nama_peminjam']} — {book['kegiatan']}"
+            })
         else:
-            ket = "Tersedia"
-            color = "green"
+            results.append({
+                "id": sid,
+                "label": label,
+                "color": "green",
+                "keterangan": "Tersedia"
+            })
 
-        results.append({"id": sid, "label": label, "color": color, "keterangan": ket})
-    
     return results
+
+@cache.memoize(60)
+def build_slot_status_cached(ruangan_id, tanggal):
+    return build_slot_status(ruangan_id, tanggal)
+
 
 def generate_qr_base64(text):
     qr = qrcode.QRCode(box_size=3, border=2)
@@ -212,7 +241,7 @@ def cgv_ruangan():
 def cgv_slots():
     ruangan_id = request.args.get("ruangan_id")
     tanggal = request.args.get("tanggal").strip()
-    return jsonify(build_slot_status(ruangan_id, tanggal))
+    return jsonify(build_slot_status_cached(ruangan_id, tanggal))
 
 @app.post("/cgv/api/booking")
 def cgv_booking():
