@@ -1,14 +1,12 @@
 services:
-  web:
+  sipiru:
     build: .
     container_name: sipiru
     restart: always 
     env_file:
       - .env   # <--- load environment untuk container
     environment:
-      PYTHONUNBUFFERED: 1
-    depends_on:
-      - db
+      PYTHONUNBUFFERED: 1 
     volumes:
       - .:/app
     networks:
