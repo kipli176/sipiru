@@ -169,7 +169,7 @@ function genCalendar(){
 
     for(let d=1; d<=total; d++){
         let dateObj=new Date(year,month,d);
-        let value = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        let value=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
 
         let cell=document.createElement("div");
         cell.className="calendar-cell";
@@ -182,19 +182,32 @@ function genCalendar(){
 
         if(isToday) cell.classList.add("calendar-today");
 
-        cell.onclick=()=>{
-            state.tanggal=value;
+        // ================================
+        // 🚫 DISABLE TANGGAL SEBELUM HARI INI
+        // ================================
+        let todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        let dateMid = new Date(year, month, d);
 
-            [...grid.children].forEach(c=>c.classList.remove("calendar-selected"));
-            cell.classList.add("calendar-selected");
+        if (dateMid < todayMid) {
+            cell.classList.add("opacity-30", "cursor-not-allowed");
+            cell.style.pointerEvents = "none";
+        } else {
+            // Jika valid → klik untuk memilih tanggal
+            cell.onclick = () => {
+                state.tanggal = value;
 
-            loadSlots();
-            showPage("slot_page");
-        };
+                [...grid.children].forEach(c => c.classList.remove("calendar-selected"));
+                cell.classList.add("calendar-selected");
+
+                loadSlots();
+                showPage("slot_page");
+            };
+        }
 
         grid.appendChild(cell);
     }
 }
+
 function prevMonth(){ state.monthOffset--; if(state.monthOffset < -2) state.monthOffset = -2; if(state.monthOffset > 3) state.monthOffset = 3; genCalendar(); }
 function nextMonth(){ state.monthOffset++; if(state.monthOffset < -2) state.monthOffset = -2; if(state.monthOffset > 3) state.monthOffset = 3; genCalendar(); }
 
@@ -367,3 +380,53 @@ history.replaceState({page: "hero_page"}, "");
 /* INIT */
 loadFakultas();
 
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/static/service-worker.js")
+        .then(reg => console.log("Service Worker registered:", reg))
+        .catch(err => console.log("Service Worker error:", err));
+    });
+}
+
+
+let deferredPrompt;
+
+const installBanner = document.getElementById("installBanner");
+const btnInstallPWA = document.getElementById("btnInstallPWA");
+
+// Default: sembunyikan banner
+installBanner.classList.add("hidden");
+
+// Browser memicu event saat boleh diinstall
+window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Tampilkan banner install
+    installBanner.classList.remove("hidden");
+});
+
+// Saat tombol install ditekan
+btnInstallPWA.addEventListener("click", async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+
+    const result = await deferredPrompt.userChoice;
+
+    if (result.outcome === "accepted") {
+        console.log("User menerima install");
+    } else {
+        console.log("User membatalkan install");
+    }
+
+    installBanner.classList.add("hidden");
+    deferredPrompt = null;
+});
+
+// Jika aplikasi sudah terinstal → sembunyikan notifikasi
+window.addEventListener("appinstalled", () => {
+    console.log("PWA installed");
+    installBanner.classList.add("hidden");
+});
